@@ -15,6 +15,8 @@ Work through each step in order. All formulas are Google Sheets syntax — paste
 ```
 RAW_DATA
 MASTER
+SUMMARY
+NEEDS REVIEW
 AUDIT_LOG
 U6 Boys
 U6 Girls
@@ -31,8 +33,8 @@ U16 Girls
 U18 Boys
 U18 Girls
 Non-Playing
-Adult Player
-Adult Student
+Senior Men
+Senior Women
 Senior Active
 Gym
 Dads & Lads
@@ -191,8 +193,8 @@ For each sheet below:
 | Tab | Formula for A2 |
 |---|---|
 | Non-Playing | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},(MASTER!L:L="Adult Non-Playing")*(MASTER!K:K="active")),"No results")` |
-| Adult Player | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},(MASTER!L:L="Adult Player + Gym")*(MASTER!K:K="active")),"No results")` |
-| Adult Student | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},(MASTER!L:L="Adult Student + Gym")*(MASTER!K:K="active")),"No results")` |
+| Senior Men | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},((MASTER!L:L="Adult Player + Gym")+(MASTER!L:L="Adult Student + Gym"))*(MASTER!E:E="Boys")*(MASTER!K:K="active")),"No results")` |
+| Senior Women | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},((MASTER!L:L="Adult Player + Gym")+(MASTER!L:L="Adult Student + Gym"))*(MASTER!E:E="Girls")*(MASTER!K:K="active")),"No results")` |
 | Senior Active | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},(MASTER!L:L="Senior Active Group Membership")*(MASTER!K:K="active")),"No results")` |
 | Gym | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},(MASTER!L:L="Gym Membership")*(MASTER!K:K="active")),"No results")` |
 | Dads & Lads | `=IFERROR(FILTER({MASTER!A:A,MASTER!B:B,MASTER!L:L,MASTER!K:K},(MASTER!L:L="Dads & Lads Membership")*(MASTER!K:K="active")),"No results")` |
@@ -200,7 +202,70 @@ For each sheet below:
 
 ---
 
-## STEP 6 — AUDIT_LOG Tab
+## STEP 6 — SUMMARY Tab
+
+Click the **SUMMARY** tab. Enter the following headers and formulas:
+
+**Row 1 headers:** `Group` (A1) | `Count` (B1)
+
+**Enter each row as shown:**
+
+| Cell A | Cell B |
+|---|---|
+| U6 Boys | `=COUNTIF(MASTER!F:F,"U6 Boys")` |
+| U6 Girls | `=COUNTIF(MASTER!F:F,"U6 Girls")` |
+| U8 Boys | `=COUNTIF(MASTER!F:F,"U8 Boys")` |
+| U8 Girls | `=COUNTIF(MASTER!F:F,"U8 Girls")` |
+| U10 Boys | `=COUNTIF(MASTER!F:F,"U10 Boys")` |
+| U10 Girls | `=COUNTIF(MASTER!F:F,"U10 Girls")` |
+| U12 Boys | `=COUNTIF(MASTER!F:F,"U12 Boys")` |
+| U12 Girls | `=COUNTIF(MASTER!F:F,"U12 Girls")` |
+| U14 Boys | `=COUNTIF(MASTER!F:F,"U14 Boys")` |
+| U14 Girls | `=COUNTIF(MASTER!F:F,"U14 Girls")` |
+| U16 Boys | `=COUNTIF(MASTER!F:F,"U16 Boys")` |
+| U16 Girls | `=COUNTIF(MASTER!F:F,"U16 Girls")` |
+| U18 Boys | `=COUNTIF(MASTER!F:F,"U18 Boys")` |
+| U18 Girls | `=COUNTIF(MASTER!F:F,"U18 Girls")` |
+| Total Youth | `=SUM(B2:B15)` |
+| Non-Playing | `=COUNTIF(MASTER!L:L,"Adult Non-Playing")` |
+| Senior Men | `=COUNTIFS(MASTER!L:L,"Adult Player + Gym",MASTER!E:E,"Boys",MASTER!K:K,"active")+COUNTIFS(MASTER!L:L,"Adult Student + Gym",MASTER!E:E,"Boys",MASTER!K:K,"active")` |
+| Senior Women | `=COUNTIFS(MASTER!L:L,"Adult Player + Gym",MASTER!E:E,"Girls",MASTER!K:K,"active")+COUNTIFS(MASTER!L:L,"Adult Student + Gym",MASTER!E:E,"Girls",MASTER!K:K,"active")` |
+| Senior Active | `=COUNTIF(MASTER!L:L,"Senior Active Group Membership")` |
+| Gym | `=COUNTIF(MASTER!L:L,"Gym Membership")` |
+| Dads & Lads | `=COUNTIF(MASTER!L:L,"Dads & Lads Membership")` |
+| G4MO | `=COUNTIF(MASTER!L:L,"Gaelic 4 Mothers & Others Membership")` |
+| Total Adults | `=SUM(B17:B23)` |
+| UNKNOWN Gender | `=COUNTIF(MASTER!E:E,"UNKNOWN")` |
+| UNASSIGNED Age | `=COUNTIF(MASTER!D:D,"UNASSIGNED")` |
+| Total Active | `=COUNTIF(MASTER!K:K,"active")` |
+
+After each import, **Total Youth + Total Adults + UNASSIGNED Age should equal Total Active**. If the numbers don't balance, check the NEEDS REVIEW sheet.
+
+**View → Freeze → 1 row**
+
+---
+
+## STEP 7 — NEEDS REVIEW Tab
+
+Click the **NEEDS REVIEW** tab.
+
+**Row 1 headers (A1–H1):** `Member Name | DOB | Age Group | Gender | Group Tag | Guardian Name | Contact Email | Contact Number`
+
+**In cell A2, paste this formula:**
+```
+=IFERROR(FILTER(
+  {MASTER!A:A,MASTER!B:B,MASTER!D:D,MASTER!E:E,MASTER!F:F,MASTER!G:G,MASTER!H:H,MASTER!I:I},
+  ((MASTER!E:E="UNKNOWN")+(MASTER!D:D="UNASSIGNED"))*(MASTER!K:K="active")
+),"No issues found")
+```
+
+This will automatically show any active member whose gender could not be resolved to Boys/Girls, or whose birth year falls outside the U6–U18 ranges. After a clean import this cell should display `No issues found`. If it shows rows, look up those members in Clubforce and correct the source data before sending any PDFs.
+
+**View → Freeze → 1 row**
+
+---
+
+## STEP 8 — AUDIT_LOG Tab
 
 Click the **AUDIT_LOG** tab and add these headers in row 1:
 
@@ -212,7 +277,7 @@ Freeze row 1. Fill in manually each time a PDF is sent to a coach.
 
 ---
 
-## STEP 7 — Verification
+## STEP 9 — Verification
 
 Once you have the sheet built, paste these 3 test rows into RAW_DATA (rows 2–4) and confirm the results in MASTER and the age group sheets:
 
@@ -235,10 +300,12 @@ Once you have the sheet built, paste these 3 test rows into RAW_DATA (rows 2–4
 - Row 1 → MASTER shows Age Group = U10, Group Tag = U10 Boys → appears in U10 Boys sheet ✓
 - Row 2 → MASTER shows status = pending → does NOT appear in U10 Girls sheet ✓
 - Row 3 → MASTER shows Age Group = UNASSIGNED → appears in Non-Playing adult sheet ✓
+- SUMMARY → Total Active matches total rows in MASTER with status = active ✓
+- NEEDS REVIEW → Row 3 appears (UNASSIGNED age group); all others are clean ✓
 
 ---
 
-## STEP 8 — Lock Down Access
+## STEP 10 — Lock Down Access
 
 1. Click **Share** (top right)
 2. Confirm no one else has access

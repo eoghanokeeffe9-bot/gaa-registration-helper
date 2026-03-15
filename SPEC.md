@@ -70,6 +70,56 @@ Filter: MASTER only includes rows where Membership Status = "Active"
 Formula approach: IFS() or nested IF() matching Birth Year ranges.
 Edge case: Birth years outside all ranges → flagged as "UNASSIGNED" in Age Group column.
 
+#### SUMMARY Sheet
+A single sheet providing a count reconciliation across all groups after each import. Allows the registrar to confirm no active members are missing from a group sheet.
+
+| Column A | Column B |
+|---|---|
+| Group | Count |
+| U6 Boys | `=COUNTIF(MASTER!F:F,"U6 Boys")` |
+| U6 Girls | `=COUNTIF(MASTER!F:F,"U6 Girls")` |
+| U8 Boys | `=COUNTIF(MASTER!F:F,"U8 Boys")` |
+| U8 Girls | `=COUNTIF(MASTER!F:F,"U8 Girls")` |
+| U10 Boys | `=COUNTIF(MASTER!F:F,"U10 Boys")` |
+| U10 Girls | `=COUNTIF(MASTER!F:F,"U10 Girls")` |
+| U12 Boys | `=COUNTIF(MASTER!F:F,"U12 Boys")` |
+| U12 Girls | `=COUNTIF(MASTER!F:F,"U12 Girls")` |
+| U14 Boys | `=COUNTIF(MASTER!F:F,"U14 Boys")` |
+| U14 Girls | `=COUNTIF(MASTER!F:F,"U14 Girls")` |
+| U16 Boys | `=COUNTIF(MASTER!F:F,"U16 Boys")` |
+| U16 Girls | `=COUNTIF(MASTER!F:F,"U16 Girls")` |
+| U18 Boys | `=COUNTIF(MASTER!F:F,"U18 Boys")` |
+| U18 Girls | `=COUNTIF(MASTER!F:F,"U18 Girls")` |
+| **Total Youth** | `=SUM(B2:B15)` |
+| Non-Playing | `=COUNTIF(MASTER!L:L,"Adult Non-Playing")` |
+| Senior Men | `=COUNTIFS(MASTER!L:L,"Adult Player + Gym",MASTER!E:E,"Boys",MASTER!K:K,"active")+COUNTIFS(MASTER!L:L,"Adult Student + Gym",MASTER!E:E,"Boys",MASTER!K:K,"active")` |
+| Senior Women | `=COUNTIFS(MASTER!L:L,"Adult Player + Gym",MASTER!E:E,"Girls",MASTER!K:K,"active")+COUNTIFS(MASTER!L:L,"Adult Student + Gym",MASTER!E:E,"Girls",MASTER!K:K,"active")` |
+| Senior Active | `=COUNTIF(MASTER!L:L,"Senior Active Group Membership")` |
+| Gym | `=COUNTIF(MASTER!L:L,"Gym Membership")` |
+| Dads & Lads | `=COUNTIF(MASTER!L:L,"Dads & Lads Membership")` |
+| G4MO | `=COUNTIF(MASTER!L:L,"Gaelic 4 Mothers & Others Membership")` |
+| **Total Adults** | `=SUM(B17:B23)` |
+| UNKNOWN Gender | `=COUNTIF(MASTER!E:E,"UNKNOWN")` |
+| UNASSIGNED Age | `=COUNTIF(MASTER!D:D,"UNASSIGNED")` |
+| **Total Active** | `=COUNTIF(MASTER!K:K,"active")` |
+
+After each import: Total Youth + Total Adults + UNASSIGNED should equal Total Active. Any UNKNOWN Gender or UNASSIGNED Age count above zero means records need review in the NEEDS REVIEW sheet.
+
+#### NEEDS REVIEW Sheet
+Auto-populated sheet that surfaces any active member who could not be placed in a group — either because their gender was unrecognised or their birth year falls outside U6–U18 ranges.
+
+Formula for A2:
+```
+=IFERROR(FILTER(
+  {MASTER!A:A,MASTER!B:B,MASTER!D:D,MASTER!E:E,MASTER!F:F,MASTER!G:G,MASTER!H:H,MASTER!I:I},
+  ((MASTER!E:E="UNKNOWN")+(MASTER!D:D="UNASSIGNED"))*(MASTER!K:K="active")
+),"No issues found")
+```
+
+Columns: Member Name, DOB, Age Group, Gender, Group Tag, Guardian Name, Contact Email, Contact Number.
+
+This sheet should be empty after every clean import. If it has rows, cross-check against the Clubforce source data and correct before sending PDFs to coaches.
+
 #### 14 Age Group Sheets (Youth)
 One sheet per group: U6 Boys, U6 Girls, U8 Boys, U8 Girls, ..., U18 Boys, U18 Girls
 
@@ -90,15 +140,17 @@ Columns displayed on each age group sheet (the coach view):
 #### 7 Adult Plan Sheets
 One sheet per adult plan type, filtered from MASTER by Plan Name + active status.
 
-| Sheet Name | Plan Name Filter |
+| Sheet Name | Filter Logic |
 |---|---|
-| Non-Playing | Adult Non-Playing |
-| Adult Player | Adult Player + Gym |
-| Adult Student | Adult Student + Gym |
-| Senior Active | Senior Active Group Membership |
-| Gym | Gym Membership |
-| Dads & Lads | Dads & Lads Membership |
-| G4MO | Gaelic 4 Mothers & Others Membership |
+| Non-Playing | Plan = "Adult Non-Playing" |
+| Senior Men | (Plan = "Adult Player + Gym" OR Plan = "Adult Student + Gym") AND Gender = "Boys" |
+| Senior Women | (Plan = "Adult Player + Gym" OR Plan = "Adult Student + Gym") AND Gender = "Girls" |
+| Senior Active | Plan = "Senior Active Group Membership" |
+| Gym | Plan = "Gym Membership" |
+| Dads & Lads | Plan = "Dads & Lads Membership" |
+| G4MO | Plan = "Gaelic 4 Mothers & Others Membership" |
+
+Note: Senior Men and Senior Women combine both Adult Player + Gym and Adult Student + Gym plans, split by gender. A member on either plan will appear in the appropriate sheet based on the gender recorded in their Clubforce registration.
 
 Columns displayed on each adult sheet:
 1. Member Name
@@ -193,15 +245,30 @@ Note: Clubforce exports status as lowercase "active". Normalise with LOWER+TRIM 
 Columns returned: Member Name, DOB, Age Group, Guardian Name, Contact Email, Contact Number, Medical Conditions.
 Note: Membership status comparison uses lowercase "active" (confirmed from Clubforce export).
 
-**Adult Plan Sheet FILTER formula (row 2 of each sheet — adjust Plan Name per sheet):**
+**Adult Plan Sheet FILTER formula — single plan (e.g. Non-Playing):**
 ```
 =FILTER(
   {MASTER!A:A, MASTER!B:B, MASTER!L:L, MASTER!K:K},
   (MASTER!L:L = "Adult Non-Playing") * (MASTER!K:K = "active")
 )
 ```
+
+**Adult Plan Sheet FILTER formula — Senior Men (combined plans, filtered by gender):**
+```
+=FILTER(
+  {MASTER!A:A, MASTER!B:B, MASTER!L:L, MASTER!K:K},
+  ((MASTER!L:L = "Adult Player + Gym") + (MASTER!L:L = "Adult Student + Gym")) * (MASTER!E:E = "Boys") * (MASTER!K:K = "active")
+)
+```
+
+**Adult Plan Sheet FILTER formula — Senior Women (combined plans, filtered by gender):**
+```
+=FILTER(
+  {MASTER!A:A, MASTER!B:B, MASTER!L:L, MASTER!K:K},
+  ((MASTER!L:L = "Adult Player + Gym") + (MASTER!L:L = "Adult Student + Gym")) * (MASTER!E:E = "Girls") * (MASTER!K:K = "active")
+)
+```
 Columns returned: Member Name, DOB, Plan Name, Membership Status.
-Replace "Adult Non-Playing" with the appropriate plan name for each sheet (see Adult Plan Sheets table above).
 
 ---
 
@@ -242,7 +309,7 @@ Simple table the registrar manually updates when sending PDFs:
 ### Workbook Setup Checklist
 
 - [ ] Create new Google Sheet: `Lomans Lions Registrations 2026`
-- [ ] Create tabs: RAW_DATA, MASTER, AUDIT_LOG, U6 Boys, U6 Girls, U8 Boys, U8 Girls, U10 Boys, U10 Girls, U12 Boys, U12 Girls, U14 Boys, U14 Girls, U16 Boys, U16 Girls, U18 Boys, U18 Girls, Non-Playing, Adult Player, Adult Student, Senior Active, Gym, Dads & Lads, G4MO
+- [ ] Create tabs: RAW_DATA, MASTER, SUMMARY, NEEDS REVIEW, AUDIT_LOG, U6 Boys, U6 Girls, U8 Boys, U8 Girls, U10 Boys, U10 Girls, U12 Boys, U12 Girls, U14 Boys, U14 Girls, U16 Boys, U16 Girls, U18 Boys, U18 Girls, Non-Playing, Senior Men, Senior Women, Senior Active, Gym, Dads & Lads, G4MO
 - [ ] RAW_DATA: paste Clubforce headers in row 1, freeze row 1
 - [ ] MASTER: enter formulas in row 2, extend down, freeze row 1
 - [ ] Each youth age group sheet: add headers in row 1, enter FILTER formula in row 2, freeze row 1
@@ -257,10 +324,13 @@ Simple table the registrar manually updates when sending PDFs:
 1. Paste 5–10 anonymised test rows into RAW_DATA → confirm MASTER derives all columns correctly
 2. Check at least one player per age group appears in the correct age group sheet
 3. Confirm a player with "pending" status does NOT appear in age group sheets
-4. Confirm a player outside U6–U18 birth year range shows "UNASSIGNED"
-5. Confirm medical conditions field passes through correctly
-6. Export a test age group sheet as PDF — verify layout is clean and only approved columns are visible
-7. Confirm workbook is NOT shared with anyone (check Share settings)
+4. Confirm a player outside U6–U18 birth year range shows "UNASSIGNED" and appears in NEEDS REVIEW
+5. Confirm a player with an unrecognised gender value shows "UNKNOWN" and appears in NEEDS REVIEW
+6. Confirm SUMMARY totals reconcile: Total Youth + Total Adults + UNASSIGNED = Total Active
+7. Confirm NEEDS REVIEW shows "No issues found" once all test data is clean
+8. Confirm medical conditions field passes through correctly
+9. Export a test age group sheet as PDF — verify layout is clean and only approved columns are visible
+10. Confirm workbook is NOT shared with anyone (check Share settings)
 
 ---
 
